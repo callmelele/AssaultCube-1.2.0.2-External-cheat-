@@ -9,6 +9,7 @@ bool g_showTrigger = false;
 bool g_showTriggerAim = false; //aimbot only
 bool g_showaimbot = true;
 bool g_showSmoothing = true;
+bool g_bezierCurve = false;
 bool g_drawFOV = true;
 bool g_showSnaplines = true;
 bool g_targetAll = true;
