@@ -9,6 +9,7 @@ extern bool g_showTrigger;
 extern bool g_showTriggerAim;
 extern bool g_showaimbot;
 extern bool g_showSmoothing;
+extern bool g_bezierCurve;
 extern bool g_drawFOV;
 extern bool g_showSnaplines;
 extern bool g_targetAll;

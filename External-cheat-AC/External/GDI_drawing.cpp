@@ -4,11 +4,40 @@
 #include "Settings.h"
 #include "Offsets.h"
 #include <cmath>
+#include <vector>
 
 #pragma warning(disable : 4996) 
 #pragma warning(disable : 4244) 
 
 extern HWND overlayHwnd;
+
+//bezier curve type shit - undetected
+void MoveHuman(float targetX, float targetY, HardwareMouse& mouse) {
+    float ctrlX = targetX / 2 + (rand() % 20 - 10);
+    float ctrlY = targetY / 2 + (rand() % 20 - 10);
+
+    int steps = 3 + (rand() % 4);
+    float lastX = 0, lastY = 0;
+
+    for (int i = 1; i <= steps; i++) {
+        float t = (float)i / (float)steps;
+
+        float currX = pow(1 - t, 2) * 0 + 2 * (1 - t) * t * ctrlX + pow(t, 2) * targetX;
+        float currY = pow(1 - t, 2) * 0 + 2 * (1 - t) * t * ctrlY + pow(t, 2) * targetY;
+
+        int8_t deltaX = (int8_t)(currX - lastX);
+        int8_t deltaY = (int8_t)(currY - lastY);
+
+        if (deltaX != 0 || deltaY != 0) {
+            mouse.Move(deltaX, deltaY);
+        }
+
+        lastX = currX;
+        lastY = currY;
+
+        Sleep(1 + (rand() % 2));
+    }
+}
 
 void GDI_drawing::SetupDrawing(HDC hDesktop, HWND handle)
 {
@@ -88,10 +117,8 @@ void GDI_drawing::DrawLine(int startX, int startY, int endX, int endY, COLORREF 
     HPEN hLinePen = CreatePen(PS_SOLID, 1, color);
     HPEN hOldPen = (HPEN)SelectObject(this->HDC_Desktop, hLinePen);
 
-    // Move to the start point (e.g., bottom of screen)
     MoveToEx(this->HDC_Desktop, startX, startY, NULL);
 
-    // Draw the line to the target (enemy feet)
     LineTo(this->HDC_Desktop, endX, endY);
 
     // Clean up memory
@@ -101,14 +128,11 @@ void GDI_drawing::DrawLine(int startX, int startY, int endX, int endY, COLORREF 
 
 void GDI_drawing::DrawCircle(int x, int y, int radius, COLORREF color)
 {
-    // Create a pen for the outline
     HPEN hPen = CreatePen(PS_SOLID, 1, color);
     HPEN hOldPen = (HPEN)SelectObject(this->HDC_Desktop, hPen);
 
-    // Select a NULL brush so the circle is not filled
     HBRUSH hOldBrush = (HBRUSH)SelectObject(this->HDC_Desktop, GetStockObject(NULL_BRUSH));
 
-    // Ellipse takes (left, top, right, bottom) coordinates
     Ellipse(this->HDC_Desktop, x - radius, y - radius, x + radius, y + radius);
 
     // Clean up
@@ -120,7 +144,7 @@ void GDI_drawing::DrawCircle(int x, int y, int radius, COLORREF color)
 DWORD WINAPI GDI_drawing::esp(Entities entities, Player player, Mathematics math)
 {
     bool g_showMenu = true;
-    int fovRadius = 200; // This matches your 'if (dist < 200)' logic
+    int fovRadius = 200; 
 
     
 
@@ -138,9 +162,10 @@ DWORD WINAPI GDI_drawing::esp(Entities entities, Player player, Mathematics math
             if (GetAsyncKeyState(VK_F6) & 1) g_showTriggerAim = !g_showTriggerAim;
             if (GetAsyncKeyState(VK_F7) & 1) g_showaimbot = !g_showaimbot;
             if (GetAsyncKeyState(VK_F8) & 1) g_showSmoothing = !g_showSmoothing;
-            if (GetAsyncKeyState(VK_F9) & 1) g_drawFOV = !g_drawFOV;
-            if (GetAsyncKeyState(VK_F10) & 1) g_showSnaplines = !g_showSnaplines;
-            if (GetAsyncKeyState(VK_F11) & 1) g_targetAll = !g_targetAll;
+            if (GetAsyncKeyState(VK_F9) & 1) g_bezierCurve = !g_bezierCurve;
+            if (GetAsyncKeyState(VK_F10) & 1) g_drawFOV = !g_drawFOV;
+            if (GetAsyncKeyState(VK_F11) & 1) g_showSnaplines = !g_showSnaplines;
+            if (GetAsyncKeyState(VK_F12) & 1) g_targetAll = !g_targetAll;
         }
 
         player.GetInfo();
@@ -178,7 +203,7 @@ DWORD WINAPI GDI_drawing::esp(Entities entities, Player player, Mathematics math
         // --- 2. DRAW MENU ---
         if (g_showMenu) {
             HBRUSH hMenuBg = CreateSolidBrush(RGB(30, 30, 30));
-            this->DrawFilledRect(10, 10, 200, 210, hMenuBg);
+            this->DrawFilledRect(10, 10, 200, 225, hMenuBg);
             DeleteObject(hMenuBg);
             this->DrawString(106, 25, RGB(255, 255, 0), "INSERT: MENU");
             this->DrawString(106, 45, g_showESP ? RGB(0, 255, 0) : RGB(255, 0, 0), "F1: ESP");
@@ -187,11 +212,12 @@ DWORD WINAPI GDI_drawing::esp(Entities entities, Player player, Mathematics math
             this->DrawString(106, 90, g_showNames ? RGB(0, 255, 0) : RGB(255, 0, 0), "F4: NAMES");
             this->DrawString(106, 105, g_showTrigger ? RGB(0, 255, 0) : RGB(255, 0, 0), "F5: TriggerBot");
             this->DrawString(106, 120, g_showTriggerAim ? RGB(0, 255, 0) : RGB(255, 0, 0), "F6: TriggerBot (Aimbot Only)");
-            this->DrawString(106, 135, g_showaimbot ? RGB(0, 255, 0) : RGB(255, 0, 0), "F7: Aimbot");
+            this->DrawString(106, 135, g_showaimbot ? RGB(0, 255, 0) : RGB(255, 0, 0), "F7: Aimbot (Esp32 hid)");
             this->DrawString(106, 150, g_showSmoothing ? RGB(0, 255, 0) : RGB(0, 200, 255), g_showSmoothing ? "F8: Aimbot Type: smooth" : "F8: Aimbot Type: snappy");
-            this->DrawString(106, 165, g_drawFOV ? RGB(0, 255, 0) : RGB(255, 0, 0), "F9: Draw Fov");
-            this->DrawString(106, 180, g_showSnaplines ? RGB(0, 255, 0) : RGB(255, 0, 0), "F10: SnapLines");
-            this->DrawString(106, 195, g_targetAll ? RGB(255, 165, 0) : RGB(0, 200, 255), g_targetAll ? "F11: Target All" : "F11: Enemies Only");
+            this->DrawString(106, 165, g_bezierCurve ? RGB(0, 255, 0) : RGB(255, 0, 0), "F9: Beizer curve Aimbot (undetected)");
+            this->DrawString(106, 180, g_drawFOV ? RGB(0, 255, 0) : RGB(255, 0, 0), "F10: Draw Fov");
+            this->DrawString(106, 195, g_showSnaplines ? RGB(0, 255, 0) : RGB(255, 0, 0), "F11: SnapLines");
+            this->DrawString(106, 210, g_targetAll ? RGB(255, 165, 0) : RGB(0, 200, 255), g_targetAll ? "F12: Target All" : "F11: Enemies Only");
         }
 
         for (int i = 0; i < entities.amount; i++)
@@ -251,12 +277,30 @@ DWORD WINAPI GDI_drawing::esp(Entities entities, Player player, Mathematics math
             if (foundTarget)
             {
                 float smoothing = 0.4f;
-                if (g_showSmoothing) {
-                    mouse_event(MOUSEEVENTF_MOVE, (DWORD)(targetX* smoothing), (DWORD)(targetY* smoothing), 0, 0);
-                }  else if (!g_showSmoothing) {
-                    mouse_event(MOUSEEVENTF_MOVE, (DWORD)(targetX), (DWORD)(targetY), 0, 0);
-				}
+                int8_t moveX, moveY;
+                if (!g_bezierCurve) {
+                    if (g_showSmoothing) {
+                        moveX = (int8_t)(targetX * smoothing);
+                        moveY = (int8_t)(targetY * smoothing);
+                    }
+                    else if (!g_showSmoothing) {
+                        moveX = (int8_t)targetX;
+                        moveY = (int8_t)targetY;
+                    }
+                    hwMouse.Move(moveX, moveY);
+                }
                 
+               
+                if (g_bezierCurve) {
+                    float dist = sqrt(targetX * targetX + targetY * targetY);
+
+                    if (dist > 20.0f) {
+                        MoveHuman(targetX, targetY, hwMouse);
+                    }
+                    else {
+                        hwMouse.Move((int8_t)(targetX), (int8_t)(targetY));
+                    }
+                }
 
 
                 if (g_showTriggerAim) {
